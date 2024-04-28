@@ -37,13 +37,13 @@ public class HelloWorld implements RequestHandler<Object, Map<String, Object>> {
 				context.getLogger().log("Hello from Lambda");
 				bodyMap.put("statusCode", 200);
 				bodyMap.put("message", "Hello from Lambda");
-				resultMap.put("body", bodyMap);
 			} else {
 				context.getLogger().log("Resource not found");
 				bodyMap.put("statusCode", 404);
 				bodyMap.put("message", "Resource not found");
-				resultMap.put("body", bodyMap);
 			}
+			resultMap.put("statusCode", 200);
+			resultMap.put("body", bodyMap);
 		}
 		return resultMap;
 	}
