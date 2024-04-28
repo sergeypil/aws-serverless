@@ -4,8 +4,8 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>hello-world-lambda-group</groupId>
-    <artifactId>hello-world-lambda</artifactId>
+    <groupId>task01-group</groupId>
+    <artifactId>task01</artifactId>
     <version>1.0.0</version>
 
     <properties>
@@ -47,7 +47,7 @@
                 <version>${syndicate.java.plugin.version}</version>
                 <configuration>
                     <packages>
-                        <package>com.helloworldlambda</package>
+                        <package>com.task01</package>
                     </packages>
                     <fileName>${project.name}-${project.version}.jar</fileName>
                 </configuration>
