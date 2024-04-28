@@ -9,3 +9,5 @@ Set SDCT_CONF:
 Unix: export SDCT_CONF="C:\Users\Sergey_Pil\Desktop\Syndicate\task01\.syndicate-config-dev"
 Windows: setx SDCT_CONF C:\Users\Sergey_Pil\Desktop\Syndicate\task01\.syndicate-config-dev
 2024-04-28 15:01:26,547 [INFO] USER:Sergey_Pil helper.py:336:timed LOG: Stage config, elapsed time: 0:00:01.632240
+2024-04-28 15:35:11,470 [INFO] USER:Sergey_Pil project.py:77:generate_project_structure LOG: Project task02 folder has been successfully created.
+2024-04-28 15:35:11,470 [INFO] USER:Sergey_Pil helper.py:336:timed LOG: Stage project, elapsed time: 0:00:00.006140
