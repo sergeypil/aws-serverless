@@ -24,7 +24,7 @@
     },
     "resource_type": "iam_policy"
   },
-  "task03-role": {
+  "hello_world-role": {
     "predefined_policies": [],
     "principal_service": "lambda",
     "custom_policies": [
@@ -32,7 +32,7 @@
     ],
     "resource_type": "iam_role"
   },
-  "task03_api": {
+  "task3_api": {
     "resource_type": "api_gateway",
     "deploy_stage": "api",
     "dependencies": [],
@@ -42,7 +42,7 @@
         "GET": {
           "authorization_type": "NONE",
           "integration_type": "lambda",
-          "lambda_name": "task03",
+          "lambda_name": "hello_world",
           "api_key_required": false,
           "method_request_parameters": {},
           "integration_request_body_template": {},
