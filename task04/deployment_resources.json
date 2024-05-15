@@ -38,6 +38,7 @@
   },
   "async_queue": {
     "resource_type": "sqs_queue",
+    "region": "eu-central-1",
     "fifo_queue": false,
     "visibility_timeout": 30,
     "delay_seconds": 0,
