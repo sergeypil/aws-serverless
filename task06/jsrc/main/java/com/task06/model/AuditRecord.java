@@ -59,4 +59,16 @@ public class AuditRecord {
     public void setNewValue(Object newValue) {
         this.newValue = newValue;
     }
+
+    @Override
+    public String toString() {
+        return "AuditRecord{" +
+            "id='" + id + '\'' +
+            ", itemKey='" + itemKey + '\'' +
+            ", modificationTime='" + modificationTime + '\'' +
+            ", updatedAttribute='" + updatedAttribute + '\'' +
+            ", oldValue=" + oldValue +
+            ", newValue=" + newValue +
+            '}';
+    }
 }

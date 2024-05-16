@@ -44,6 +44,7 @@ public class AuditProducer implements RequestHandler<DynamodbEvent, Void> {
 			auditRecord.setId(UUID.randomUUID().toString());
 			auditRecord.setModificationTime(LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME));
 			Map<String, AttributeValue> newImage = record.getDynamodb().getNewImage();
+			logger.info("New image: " + newImage);
 			
 			if (record.getEventName().equals(INSERT_EVENT)) {
 				logger.info("Processing INSERT event");
@@ -59,7 +60,7 @@ public class AuditProducer implements RequestHandler<DynamodbEvent, Void> {
 				auditRecord.setOldValue(Integer.valueOf(oldImage.get("value").getN()));
 				auditRecord.setNewValue(Integer.valueOf(newImage.get("value").getN()));
 			}
-
+			logger.info("Saving audit record: " + auditRecord);
 			table.putItem(auditRecord);
 		}
 		return null;
