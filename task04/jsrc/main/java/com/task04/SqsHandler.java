@@ -13,15 +13,13 @@ import java.util.logging.Logger;
 
 @LambdaHandler(lambdaName = "sqs_handler",
 			   roleName = "sqs_handler-role",
-			   isPublishVersion = true,
-			   aliasName = "${lambdas_alias_name}",
 			   logsExpiration = RetentionSetting.SYNDICATE_ALIASES_SPECIFIED
 )
 @SqsTriggerEventSource(targetQueue = "async_queue",
 					   batchSize = 1)
 public class SqsHandler implements RequestHandler<SQSEvent, String> {
 	private static final Logger log = Logger.getLogger(SqsHandler.class.getName());
-	
+
 	public String handleRequest(SQSEvent event, Context context) {
 		log.info("SQSEvent: " + event);
 		List<SQSMessage> records = event.getRecords();

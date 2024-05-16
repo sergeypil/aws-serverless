@@ -12,10 +12,10 @@ import java.util.List;
 import java.util.logging.Logger;
 
 @LambdaHandler(lambdaName = "sns_handler",
-	roleName = "sns_handler-role",
-	isPublishVersion = true,
-	aliasName = "${lambdas_alias_name}",
-	logsExpiration = RetentionSetting.SYNDICATE_ALIASES_SPECIFIED
+			   roleName = "sns_handler-role",
+			   isPublishVersion = true,
+			   aliasName = "${lambdas_alias_name}",
+			   logsExpiration = RetentionSetting.SYNDICATE_ALIASES_SPECIFIED
 )
 @SnsEventSource(targetTopic = "lambda_topic")
 public class SnsHandler implements RequestHandler<SNSEvent, String> {
