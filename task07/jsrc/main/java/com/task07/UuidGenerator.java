@@ -49,7 +49,7 @@ public class UuidGenerator implements RequestHandler<Object, String> {
         String s3FileName = Instant.now() + ".json";
 		
 		logger.info("Uploading data to S3...");
-		s3Client.putObject("uuid-storage", s3FileName, jsonData);
+		s3Client.putObject("cmtr-d7361a80-uuid-storage-test", s3FileName, jsonData);
 		logger.info("Data uploaded to S3.");
 		
 		return "Lambda is finished.";
