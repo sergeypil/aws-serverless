@@ -51,7 +51,7 @@ public class UuidGenerator implements RequestHandler<Object, String> {
 		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
 													   .withZone(ZoneId.of("UTC"));
 
-		String s3FileName = formatter.format(Instant.now() ) + ".json";
+		String s3FileName = formatter.format(Instant.now());
 		
 		logger.info("Uploading data to S3...");
 		s3Client.putObject("cmtr-d7361a80-uuid-storage-test", s3FileName, jsonData);
