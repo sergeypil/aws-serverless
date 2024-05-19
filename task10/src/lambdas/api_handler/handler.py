@@ -11,200 +11,210 @@ from commons.abstract_lambda import AbstractLambda
 _LOGGER = get_logger('ApiHandler-handler')
 
 
-class ConversionEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, Decimal):
-            return int(obj)
-        return super().default(obj)
+class JsonEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, Decimal):
+            return int(o)
+        return json.JSONEncoder.default(self, o)
 
 
-def retrieve_cognito_details(userpool_name):
+def getUserPoolId(userpool_name):
     cognito = boto3.client('cognito-idp')
-    pagination_token = None
-
+    next_token = None
     while True:
-        if pagination_token:
-            response = cognito.list_user_pools(MaxResults=60, NextToken=pagination_token)
+        if next_token:
+            response = cognito.list_user_pools(MaxResults=60, NextToken=next_token)
         else:
             response = cognito.list_user_pools(MaxResults=60)
 
-        for userpool in response['UserPools']:
-            if userpool['Name'] == userpool_name:
-                userpool_id = userpool['Id']
-                break
+        for client in response['UserPools']:
+            if client['Name'] == userpool_name:
+                return client['Id']
 
-        pagination_token = response.get('NextToken')
-        if not pagination_token:
+        next_token = response.get('NextToken')
+        if not next_token:
             break
+    raise Exception('Cannot find UserPoolId')
 
-    pagination_token = None
+
+def getAppClientId(userpool_id):
+    cognito = boto3.client('cognito-idp')
+    next_token = None
+
     while True:
-        if pagination_token:
-            response = cognito.list_user_pool_clients(UserPoolId=userpool_id, MaxResults=60, NextToken=pagination_token)
+        if next_token:
+            response = cognito.list_user_pool_clients(
+                UserPoolId=userpool_id, MaxResults=60, NextToken=next_token
+            )
         else:
             response = cognito.list_user_pool_clients(UserPoolId=userpool_id, MaxResults=60)
 
+        _LOGGER.info(f'list_user_pool_clients response: {response}')
+
         for client in response['UserPoolClients']:
             if client['UserPoolId'] == userpool_id:
-                client_id = client['ClientId']
-                break
+                return client['ClientId']
 
-        pagination_token = response.get('NextToken')
-        if not pagination_token:
+        next_token = response.get('NextToken')
+        if not next_token:
             break
 
-    return userpool_id, client_id
+    raise Exception('Cannot find ClientId')
 
 
-def handle_user_auth(resource, request_body):
+def userSignup(formData):
     userpool_name = os.environ['BOOKING_USERPOOL']
-    userpool_id, client_id = retrieve_cognito_details(userpool_name)
+    userpool_id = getUserPoolId(userpool_name)
     cognito = boto3.client('cognito-idp')
 
-    if resource == '/signup':
-        user_data = {
-            'UserPoolId': userpool_id,
-            'Username': request_body['email'],
-            'UserAttributes': [
-                {'Name': 'given_name', 'Value': request_body['firstName']},
-                {'Name': 'family_name', 'Value': request_body['lastName']},
-                {'Name': 'email', 'Value': request_body['email']}
-            ],
-            'TemporaryPassword': request_body['password'],
-            'MessageAction': 'SUPPRESS'
+    user_data = {
+        'UserPoolId': userpool_id,
+        'Username': formData['email'],
+        'UserAttributes': [
+            {'Name': 'given_name', 'Value': formData['firstName']},
+            {'Name': 'family_name', 'Value': formData['lastName']},
+            {'Name': 'email', 'Value': formData['email']}
+        ],
+        'TemporaryPassword': formData['password'],
+        'MessageAction': 'SUPPRESS'
+    }
+
+    response = cognito.admin_create_user(**user_data)
+    _LOGGER.info(f'admin_create_user response: {response}')
+
+    password_data = {
+        'UserPoolId': userpool_id,
+        'Username': formData['email'],
+        'Password': formData['password'],
+        'Permanent': True
+    }
+
+    resp = cognito.admin_set_user_password(**password_data)
+    _LOGGER.info(f'admin_set_user_password response: {resp}')
+
+    return {'statusCode': 200, 'body': ''}
+
+
+def userSignin(formData):
+    userpool_name = os.environ['BOOKING_USERPOOL']
+    userpool_id = getUserPoolId(userpool_name)
+    client_id = getAppClientId(userpool_id)
+    cognito = boto3.client('cognito-idp')
+
+    auth_data = {
+        'ClientId': client_id,
+        'AuthFlow': 'USER_PASSWORD_AUTH',
+        'AuthParameters': {
+            'USERNAME': formData['email'],
+            'PASSWORD': formData['password']
         }
+    }
 
-        response = cognito.admin_create_user(**user_data)
-        _LOGGER.info(f'admin_create_user response: {response}')
+    response = cognito.initiate_auth(**auth_data)
+    _LOGGER.info(f'initiate_auth response: {response}')
+    access_token = response['AuthenticationResult']['IdToken']
 
-        password_data = {
-            'UserPoolId': userpool_id,
-            'Username': request_body['email'],
-            'Password': request_body['password'],
-            'Permanent': True
-        }
-
-        response = cognito.admin_set_user_password(**password_data)
-        _LOGGER.info(f'admin_set_user_password response: {response}')
-
-        return {'statusCode': 200, 'body': ''}
-    else:
-        auth_paramaters = {
-            'ClientId': client_id,
-            'AuthFlow': 'USER_PASSWORD_AUTH',
-            'AuthParameters': {
-                'USERNAME': request_body['email'],
-                'PASSWORD': request_body['password']
-            }
-        }
-
-        response = cognito.initiate_auth(**auth_paramaters)
-        _LOGGER.info(f'initiate_auth response: {response}')
-        token = response['AuthenticationResult']['IdToken']
-
-        return {'statusCode': 200, 'body': json.dumps({'accessToken': token})}
+    return {'statusCode': 200, 'body': json.dumps({'accessToken': access_token})}
 
 
-def fetch_all_tables():
+def getTableList():
     dynamodb = boto3.resource('dynamodb')
-    dynamodb_table = dynamodb.Table(os.environ['TABLES_TABLE'])
-    response = dynamodb_table.scan()
+    table = dynamodb.Table(os.environ['TABLES_TABLE'])
+    response = table.scan()
 
-    tables = response.get('Items', [])
+    tables = response['Items'] if response and response.get('Items') else []
 
-    return {'statusCode': 200, 'body': json.dumps({'tables': tables}, cls=ConversionEncoder)}
+    return {'statusCode': 200, 'body': json.dumps({'tables': tables}, cls=JsonEncoder)}
 
-def create_new_table(request_body):
+
+def addNewTable(formData):
     dynamodb = boto3.resource('dynamodb')
-    dynamodb_table = dynamodb.Table(os.environ['TABLES_TABLE'])
+    table = dynamodb.Table(os.environ['TABLES_TABLE'])
+    table.put_item(Item=formData)
 
-    dynamodb_table.put_item(Item=request_body)
-
-    return {'statusCode': 200, 'body': json.dumps({'id': request_body['id']})}
+    return {'statusCode': 200, 'body': json.dumps({'id': formData['id']})}
 
 
-def fetch_table_by_identifier(table_id):
+def getTableById(table_id):
     dynamodb = boto3.resource('dynamodb')
-    dynamodb_table = dynamodb.Table(os.environ['TABLES_TABLE'])
-
+    table = dynamodb.Table(os.environ['TABLES_TABLE'])
     _LOGGER.info(f"get_table_by_id table_id: {table_id=}")
+    response = table.get_item(Key={'id': int(table_id)})
 
-    response = dynamodb_table.get_item(Key={'id': int(table_id)})
+    table_data = response['Item'] if response and response.get('Item') else {}
 
-    table = response.get('Item', {})
-
-    return {'statusCode': 200, 'body': json.dumps(table, cls=ConversionEncoder)}
+    return {'statusCode': 200, 'body': json.dumps(table_data, cls=JsonEncoder)}
 
 
-def create_table_reservation(request_body):
+def makeReservation(formData):
     dynamodb = boto3.resource('dynamodb')
     reservations_table = dynamodb.Table(os.environ['RESERVATION_TABLE'])
     tables_table = dynamodb.Table(os.environ['TABLES_TABLE'])
 
-    filter_cond = Attr('number').eq(request_body['tableNumber'])
-    table_search_result = tables_table.scan(FilterExpression=filter_cond)
-
-    if not table_search_result['Items']:
+    table_response = tables_table.scan(
+        FilterExpression=Attr('number').eq(formData['tableNumber'])
+    )
+    if not table_response['Items']:
         return {'statusCode': 400, 'body': 'Table not found'}
 
-    filter_cond = Attr('tableNumber').eq(request_body['tableNumber']) & Attr('date').eq(request_body['date']) & (
-        Attr('slotTimeStart').between(request_body['slotTimeStart'], request_body['slotTimeEnd']) |
-        Attr('slotTimeEnd').between(request_body['slotTimeStart'], request_body['slotTimeEnd'])
+    reservations_response = reservations_table.scan(
+        FilterExpression=Attr('tableNumber').eq(formData['tableNumber']) & Attr('date').eq(formData['date']) & (
+            (Attr('slotTimeStart').between(formData['slotTimeStart'], formData['slotTimeEnd'])) |
+            (Attr('slotTimeEnd').between(formData['slotTimeStart'], formData['slotTimeEnd']))
+        )
     )
-
-    reservation_search_result = reservations_table.scan(FilterExpression=filter_cond)
-    if reservation_search_result['Items']:
+    if reservations_response['Items']:
         return {'statusCode': 400, 'body': 'Conflicting reservation exists'}
 
-    request_body['id'] = str(uuid.uuid4())
+    formData['id'] = str(uuid.uuid4())
+    reservations_table.put_item(Item=formData)
 
-    reservations_table.put_item(Item=request_body)
-
-    return {'statusCode': 200, 'body': json.dumps({'reservationId': request_body['id']})}
+    return {'statusCode': 200, 'body': json.dumps({'reservationId': formData['id']})}
 
 
-def fetch_all_reservations():
+def getReservationsList():
     dynamodb = boto3.resource('dynamodb')
-    dynamodb_table = dynamodb.Table(os.environ['RESERVATION_TABLE'])
+    table = dynamodb.Table(os.environ['RESERVATION_TABLE'])
+    response = table.scan()
 
-    response = dynamodb_table.scan()
+    tables = response['Items'] if response and response.get('Items') else []
 
-    reservations = response.get('Items', [])
-
-    return {'statusCode': 200, 'body': json.dumps({'reservations': reservations}, cls=ConversionEncoder)}
+    return {'statusCode': 200, 'body': json.dumps({'reservations': tables}, cls=JsonEncoder)}
 
 
 class ApiHandler(AbstractLambda):
 
-    def validate_request(self, event) -> dict:
-        return
+    def processRequest(self, event) -> dict:
+        pass
 
-    def process_request(self, event, context):
+    def requestHandler(self, event, context):
 
-        endpoint = event['resource']
-        method = event['httpMethod']
-        request_body = json.loads(event.get('body', '{}'))
+        resource = event['resource']
+        http_method = event['httpMethod']
+        formData = json.loads(event['body'] or '{}')
 
         try:
-            if endpoint in ('/signup', '/signin') and method == 'POST':
-                return handle_user_auth(endpoint, request_body)
-            elif endpoint == '/tables' and method == 'GET':
-                return fetch_all_tables()
-            elif endpoint == '/tables' and method == 'POST':
-                return create_new_table(request_body)
-            elif endpoint == '/tables/{tableId}' and method == 'GET':
-                return fetch_table_by_identifier(event['pathParameters']['tableId'])
-            elif endpoint == '/reservations' and method == 'POST':
-                return create_table_reservation(request_body)
-            elif endpoint == '/reservations' and method == 'GET':
-                return fetch_all_reservations()
+            if resource == '/signup' and http_method == 'POST':
+                return userSignup(formData)
+            elif resource == '/signin' and http_method == 'POST':
+                return userSignin(formData)
+            elif resource == '/tables' and http_method == 'GET':
+                return getTableList()
+            elif resource == '/tables' and http_method == 'POST':
+                return addNewTable(formData)
+            elif resource == '/tables/{tableId}' and http_method == 'GET':
+                return getTableById(event['pathParameters']['tableId'])
+            elif resource == '/reservations' and http_method == 'POST':
+                return makeReservation(formData)
+            elif resource == '/reservations' and http_method == 'GET':
+                return getReservationsList()
             else:
                 return {'statusCode': 400, 'body': 'Unknown resource'}
-        except Exception as error:
-            return {'statusCode': 400, 'body': str(error)}
+        except Exception as e:
+            return {'statusCode': 400, 'body': str(e)}
 
 HANDLER = ApiHandler()
 
 
-def lambda_trigger(event, context):
+def lambda_handler(event, context):
     return HANDLER.lambda_handler(event=event, context=context)

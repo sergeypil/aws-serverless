@@ -22,9 +22,9 @@
             "cognito-idp:AdminGetUser",
             "cognito-idp:Describe*",
             "cognito-idp:List*",
-            "cognito-idp:AdminSetUserPassword",
             "cognito-idp:AdminCreateUser",
-            "cognito-idp:ListUserPoolClients"
+            "cognito-idp:ListUserPoolClients",
+            "cognito-idp:AdminSetUserPassword"
           ],
           "Effect": "Allow",
           "Resource": "*"
@@ -55,7 +55,7 @@
   "simple-booking-userpool": {
     "resource_type": "cognito_idp",
     "password_policy": {
-      "minimum_length": 10,
+      "minimum_length": 12,
       "require_uppercase": false,
       "require_symbols": true,
       "require_lowercase": false,
@@ -70,8 +70,8 @@
       "generate_secret": false,
       "explicit_auth_flows": [
         "ALLOW_ADMIN_USER_PASSWORD_AUTH",
-        "ALLOW_USER_SRP_AUTH",
         "ALLOW_CUSTOM_AUTH",
+        "ALLOW_USER_SRP_AUTH",
         "ALLOW_REFRESH_TOKEN_AUTH",
         "ALLOW_USER_PASSWORD_AUTH"
       ]
@@ -114,7 +114,7 @@
       },
       "/tables": {
         "enable_cors": false,
-        "GET": {
+        "POST": {
           "enable_proxy": true,
           "authorization_type": "authorizer",
           "integration_type": "lambda",
@@ -126,7 +126,7 @@
           "integration_responses": [],
           "default_error_pattern": true
         },
-        "POST": {
+        "GET": {
           "enable_proxy": true,
           "authorization_type": "authorizer",
           "integration_type": "lambda",
@@ -141,6 +141,18 @@
       },
       "/reservations": {
         "enable_cors": false,
+        "POST": {
+          "enable_proxy": true,
+          "authorization_type": "authorizer",
+          "integration_type": "lambda",
+          "lambda_name": "api_handler",
+          "api_key_required": false,
+          "method_request_parameters": {},
+          "integration_request_body_template": {},
+          "responses": [],
+          "integration_responses": [],
+          "default_error_pattern": true
+        },
         "GET": {
           "enable_proxy": true,
           "authorization_type": "authorizer",
@@ -154,18 +166,6 @@
           "default_error_pattern": true
         }
       },
-        "POST": {
-          "enable_proxy": true,
-          "authorization_type": "authorizer",
-          "integration_type": "lambda",
-          "lambda_name": "api_handler",
-          "api_key_required": false,
-          "method_request_parameters": {},
-          "integration_request_body_template": {},
-          "responses": [],
-          "integration_responses": [],
-          "default_error_pattern": true
-        },
       "/tables/{tableId}": {
         "enable_cors": false,
         "GET": {
