@@ -2,7 +2,7 @@
   "name": "meteo",
   "resource_type": "lambda_layer",
   "runtimes": [
-    "python3.10"
+    "python3.11"
   ],
   "deployment_package": "meteo_layer.zip"
 }
