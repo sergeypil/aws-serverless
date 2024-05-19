@@ -8,7 +8,7 @@ import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-@DynamoDbBean
+//@DynamoDbBean
 public class Hourly {
     private List<String> time;
     private List<Double> temperature_2m;

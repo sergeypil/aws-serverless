@@ -7,8 +7,13 @@ import com.amazonaws.xray.AWSXRayRecorderBuilder;
 import com.amazonaws.xray.entities.Segment;
 import com.amazonaws.xray.plugins.EC2Plugin;
 import com.amazonaws.xray.strategy.sampling.LocalizedSamplingStrategy;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.syndicate.deployment.annotations.lambda.LambdaHandler;
+import com.syndicate.deployment.annotations.lambda.LambdaLayer;
+import com.syndicate.deployment.annotations.lambda.LambdaUrlConfig;
 import com.syndicate.deployment.model.RetentionSetting;
+import com.syndicate.deployment.model.lambda.url.AuthType;
+import com.syndicate.deployment.model.lambda.url.InvokeMode;
 import com.task09.model.Forecast;
 import com.task09.model.ForecastData;
 import org.springframework.http.HttpEntity;
@@ -29,6 +34,10 @@ import java.util.logging.Logger;
 @LambdaHandler(lambdaName = "processor",
 	roleName = "processor-role",
 	logsExpiration = RetentionSetting.SYNDICATE_ALIASES_SPECIFIED
+)
+@LambdaUrlConfig(
+	authType = AuthType.NONE,
+	invokeMode = InvokeMode.BUFFERED
 )
 public class Processor implements RequestHandler<Object, String> {
 	private static final Logger logger = Logger.getLogger(Processor.class.getName());
@@ -61,7 +70,8 @@ public class Processor implements RequestHandler<Object, String> {
 			forecastData.setId(UUID
 								   .randomUUID()
 								   .toString());
-			forecastData.setForecast(forecast);
+			ObjectMapper objectMapper = new ObjectMapper();
+			forecastData.setForecast(objectMapper.writeValueAsString(forecast));
 			logger.info("ForecastData: " + forecastData);
 
 			DynamoDbTable<ForecastData> table = enhancedClient.table(TABLE_NAME, TableSchema.fromBean(ForecastData.class));
@@ -71,7 +81,6 @@ public class Processor implements RequestHandler<Object, String> {
 			AWSXRay
 				.getCurrentSegment()
 				.addException(e);
-			throw e;
 		} finally {
 			AWSXRay.endSegment();
 		}

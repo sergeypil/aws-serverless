@@ -6,7 +6,7 @@ import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbParti
 @DynamoDbBean
 public class ForecastData {
     private String id;
-    private Forecast forecast;
+    private String forecast;
 
     @DynamoDbPartitionKey
     public String getId() {
@@ -17,11 +17,11 @@ public class ForecastData {
         this.id = id;
     }
 
-    public Forecast getForecast() {
+    public String getForecast() {
         return forecast;
     }
 
-    public void setForecast(Forecast forecast) {
+    public void setForecast(String forecast) {
         this.forecast = forecast;
     }
 }

@@ -6,7 +6,7 @@ import lombok.Data;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-@DynamoDbBean
+//@DynamoDbBean
 public class Current {
     private String time;
     private int interval;
