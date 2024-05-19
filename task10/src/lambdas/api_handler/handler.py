@@ -174,7 +174,7 @@ def fetch_all_reservations():
     return {'statusCode': 200, 'body': json.dumps({'reservations': reservations}, cls=ConversionEncoder)}
 
 
-class RequestHandler(AbstractLambda):
+class ApiHandler(AbstractLambda):
 
     def validate_request(self, event) -> dict:
         return
@@ -203,7 +203,7 @@ class RequestHandler(AbstractLambda):
         except Exception as error:
             return {'statusCode': 400, 'body': str(error)}
 
-HANDLER = RequestHandler()
+HANDLER = ApiHandler()
 
 
 def lambda_trigger(event, context):
