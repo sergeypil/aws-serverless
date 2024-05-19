@@ -15,8 +15,8 @@ public class Forecast {
     private String timezone;
     private String timezone_abbreviation;
     private int elevation;
-    private Unit current_units;
-    private Current current;
+    //private Unit current_units;
+    //private Current current;
     private Unit hourly_units;
     private Hourly hourly;
     
@@ -76,21 +76,21 @@ public class Forecast {
         this.elevation = elevation;
     }
 
-    public Unit getCurrent_units() {
-        return current_units;
-    }
-
-    public void setCurrent_units(Unit current_units) {
-        this.current_units = current_units;
-    }
-
-    public Current getCurrent() {
-        return current;
-    }
-
-    public void setCurrent(Current current) {
-        this.current = current;
-    }
+//    public Unit getCurrent_units() {
+//        return current_units;
+//    }
+//
+//    public void setCurrent_units(Unit current_units) {
+//        this.current_units = current_units;
+//    }
+//
+//    public Current getCurrent() {
+//        return current;
+//    }
+//
+//    public void setCurrent(Current current) {
+//        this.current = current;
+//    }
 
     public Unit getHourly_units() {
         return hourly_units;
