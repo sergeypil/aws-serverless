@@ -10,15 +10,13 @@ from commons.abstract_lambda import AbstractLambda
 
 _LOGGER = get_logger('ApiHandler-handler')
 
-
-class JsonEncoder(json.JSONEncoder):
+class Encoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, Decimal):
             return int(o)
         return json.JSONEncoder.default(self, o)
 
-
-def getUserPoolId(userpool_name):
+def fetch_cognito_userpool_id(userpool_name):
     cognito = boto3.client('cognito-idp')
     next_token = None
     while True:
@@ -36,8 +34,7 @@ def getUserPoolId(userpool_name):
             break
     raise Exception('Cannot find UserPoolId')
 
-
-def getAppClientId(userpool_id):
+def fetch_cognito_app_client_id(userpool_id):
     cognito = boto3.client('cognito-idp')
     next_token = None
 
@@ -61,21 +58,20 @@ def getAppClientId(userpool_id):
 
     raise Exception('Cannot find ClientId')
 
-
-def userSignup(formData):
+def signup_user(body):
     userpool_name = os.environ['BOOKING_USERPOOL']
-    userpool_id = getUserPoolId(userpool_name)
+    userpool_id = fetch_cognito_userpool_id(userpool_name)
     cognito = boto3.client('cognito-idp')
 
     user_data = {
         'UserPoolId': userpool_id,
-        'Username': formData['email'],
+        'Username': body['email'],
         'UserAttributes': [
-            {'Name': 'given_name', 'Value': formData['firstName']},
-            {'Name': 'family_name', 'Value': formData['lastName']},
-            {'Name': 'email', 'Value': formData['email']}
+            {'Name': 'given_name', 'Value': body['firstName']},
+            {'Name': 'family_name', 'Value': body['lastName']},
+            {'Name': 'email', 'Value': body['email']}
         ],
-        'TemporaryPassword': formData['password'],
+        'TemporaryPassword': body['password'],
         'MessageAction': 'SUPPRESS'
     }
 
@@ -84,8 +80,8 @@ def userSignup(formData):
 
     password_data = {
         'UserPoolId': userpool_id,
-        'Username': formData['email'],
-        'Password': formData['password'],
+        'Username': body['email'],
+        'Password': body['password'],
         'Permanent': True
     }
 
@@ -94,19 +90,18 @@ def userSignup(formData):
 
     return {'statusCode': 200, 'body': ''}
 
-
-def userSignin(formData):
+def signin_user(body):
     userpool_name = os.environ['BOOKING_USERPOOL']
-    userpool_id = getUserPoolId(userpool_name)
-    client_id = getAppClientId(userpool_id)
+    userpool_id = fetch_cognito_userpool_id(userpool_name)
+    client_id = fetch_cognito_app_client_id(userpool_id)
     cognito = boto3.client('cognito-idp')
 
     auth_data = {
         'ClientId': client_id,
         'AuthFlow': 'USER_PASSWORD_AUTH',
         'AuthParameters': {
-            'USERNAME': formData['email'],
-            'PASSWORD': formData['password']
+            'USERNAME': body['email'],
+            'PASSWORD': body['password']
         }
     }
 
@@ -116,26 +111,24 @@ def userSignin(formData):
 
     return {'statusCode': 200, 'body': json.dumps({'accessToken': access_token})}
 
+def create_table(body):
+    dynamodb = boto3.resource('dynamodb')
+    table = dynamodb.Table(os.environ['TABLES_TABLE'])
+    table.put_item(Item=body)
 
-def getTableList():
+    return {'statusCode': 200, 'body': json.dumps({'id': body['id']})}
+
+
+def fetch_tables():
     dynamodb = boto3.resource('dynamodb')
     table = dynamodb.Table(os.environ['TABLES_TABLE'])
     response = table.scan()
 
     tables = response['Items'] if response and response.get('Items') else []
 
-    return {'statusCode': 200, 'body': json.dumps({'tables': tables}, cls=JsonEncoder)}
+    return {'statusCode': 200, 'body': json.dumps({'tables': tables}, cls=Encoder)}
 
-
-def addNewTable(formData):
-    dynamodb = boto3.resource('dynamodb')
-    table = dynamodb.Table(os.environ['TABLES_TABLE'])
-    table.put_item(Item=formData)
-
-    return {'statusCode': 200, 'body': json.dumps({'id': formData['id']})}
-
-
-def getTableById(table_id):
+def fetch_table_by_id(table_id):
     dynamodb = boto3.resource('dynamodb')
     table = dynamodb.Table(os.environ['TABLES_TABLE'])
     _LOGGER.info(f"get_table_by_id table_id: {table_id=}")
@@ -143,78 +136,74 @@ def getTableById(table_id):
 
     table_data = response['Item'] if response and response.get('Item') else {}
 
-    return {'statusCode': 200, 'body': json.dumps(table_data, cls=JsonEncoder)}
+    return {'statusCode': 200, 'body': json.dumps(table_data, cls=Encoder)}
 
-
-def makeReservation(formData):
+def create_reservation(body):
     dynamodb = boto3.resource('dynamodb')
     reservations_table = dynamodb.Table(os.environ['RESERVATION_TABLE'])
     tables_table = dynamodb.Table(os.environ['TABLES_TABLE'])
 
     table_response = tables_table.scan(
-        FilterExpression=Attr('number').eq(formData['tableNumber'])
+        FilterExpression=Attr('number').eq(body['tableNumber'])
     )
     if not table_response['Items']:
         return {'statusCode': 400, 'body': 'Table not found'}
 
     reservations_response = reservations_table.scan(
-        FilterExpression=Attr('tableNumber').eq(formData['tableNumber']) & Attr('date').eq(formData['date']) & (
-            (Attr('slotTimeStart').between(formData['slotTimeStart'], formData['slotTimeEnd'])) |
-            (Attr('slotTimeEnd').between(formData['slotTimeStart'], formData['slotTimeEnd']))
+        FilterExpression=Attr('tableNumber').eq(body['tableNumber']) & Attr('date').eq(body['date']) & (
+            (Attr('slotTimeStart').between(body['slotTimeStart'], body['slotTimeEnd'])) |
+            (Attr('slotTimeEnd').between(body['slotTimeStart'], body['slotTimeEnd']))
         )
     )
     if reservations_response['Items']:
         return {'statusCode': 400, 'body': 'Conflicting reservation exists'}
 
-    formData['id'] = str(uuid.uuid4())
-    reservations_table.put_item(Item=formData)
+    body['id'] = str(uuid.uuid4())
+    reservations_table.put_item(Item=body)
 
-    return {'statusCode': 200, 'body': json.dumps({'reservationId': formData['id']})}
+    return {'statusCode': 200, 'body': json.dumps({'reservationId': body['id']})}
 
-
-def getReservationsList():
+def fetch_reservations():
     dynamodb = boto3.resource('dynamodb')
     table = dynamodb.Table(os.environ['RESERVATION_TABLE'])
     response = table.scan()
 
     tables = response['Items'] if response and response.get('Items') else []
 
-    return {'statusCode': 200, 'body': json.dumps({'reservations': tables}, cls=JsonEncoder)}
-
+    return {'statusCode': 200, 'body': json.dumps({'reservations': tables}, cls=Encoder)}
 
 class ApiHandler(AbstractLambda):
 
-    def processRequest(self, event) -> dict:
+    def validate_request(self, event) -> dict:
         pass
 
-    def requestHandler(self, event, context):
+    def handle_request(self, event, context):
 
         resource = event['resource']
         http_method = event['httpMethod']
-        formData = json.loads(event['body'] or '{}')
+        body = json.loads(event['body'] or '{}')
 
         try:
             if resource == '/signup' and http_method == 'POST':
-                return userSignup(formData)
+                return signup_user(body)
             elif resource == '/signin' and http_method == 'POST':
-                return userSignin(formData)
+                return signin_user(body)
             elif resource == '/tables' and http_method == 'GET':
-                return getTableList()
+                return fetch_tables()
             elif resource == '/tables' and http_method == 'POST':
-                return addNewTable(formData)
+                return create_table(body)
             elif resource == '/tables/{tableId}' and http_method == 'GET':
-                return getTableById(event['pathParameters']['tableId'])
+                return fetch_table_by_id(event['pathParameters']['tableId'])
             elif resource == '/reservations' and http_method == 'POST':
-                return makeReservation(formData)
+                return create_reservation(body)
             elif resource == '/reservations' and http_method == 'GET':
-                return getReservationsList()
+                return fetch_reservations()
             else:
                 return {'statusCode': 400, 'body': 'Unknown resource'}
         except Exception as e:
             return {'statusCode': 400, 'body': str(e)}
 
 HANDLER = ApiHandler()
-
 
 def lambda_handler(event, context):
     return HANDLER.lambda_handler(event=event, context=context)
