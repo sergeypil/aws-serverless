@@ -56,7 +56,7 @@ public class Processor implements RequestHandler<Object, String> {
 		logger.info("Request: " + request);
 		Segment subsegment = AWSXRay.beginSegment("handleRequest");
 		try {
-			String url = "https://api.open-meteo.com/v1/forecast?latitude=52.5200&longitude=13.4050&hourly=temperature_2m";
+			String url = "https://api.open-meteo.com/v1/forecast?latitude=52.52&longitude=13.41&current=temperature_2m,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m";
 
 			HttpHeaders headers = new HttpHeaders();
 			headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
@@ -71,8 +71,9 @@ public class Processor implements RequestHandler<Object, String> {
 			forecastData.setId(UUID
 								   .randomUUID()
 								   .toString());
-			ObjectMapper objectMapper = new ObjectMapper();
-			forecastData.setForecast(objectMapper.writeValueAsString(forecast));
+			//ObjectMapper objectMapper = new ObjectMapper();
+			//forecastData.setForecast(objectMapper.writeValueAsString(forecast));
+			forecastData.setForecast(forecast);
 			logger.info("ForecastData: " + forecastData);
 
 			DynamoDbTable<ForecastData> table = enhancedClient.table(TABLE_NAME, TableSchema.fromBean(ForecastData.class));
