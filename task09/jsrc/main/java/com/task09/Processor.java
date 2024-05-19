@@ -12,6 +12,7 @@ import com.syndicate.deployment.annotations.lambda.LambdaHandler;
 import com.syndicate.deployment.annotations.lambda.LambdaLayer;
 import com.syndicate.deployment.annotations.lambda.LambdaUrlConfig;
 import com.syndicate.deployment.model.RetentionSetting;
+import com.syndicate.deployment.model.TracingMode;
 import com.syndicate.deployment.model.lambda.url.AuthType;
 import com.syndicate.deployment.model.lambda.url.InvokeMode;
 import com.task09.model.Forecast;
@@ -26,14 +27,14 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 
-import java.net.URL;
 import java.util.Arrays;
 import java.util.UUID;
 import java.util.logging.Logger;
 
 @LambdaHandler(lambdaName = "processor",
-	roleName = "processor-role",
-	logsExpiration = RetentionSetting.SYNDICATE_ALIASES_SPECIFIED
+			   roleName = "processor-role",
+			   logsExpiration = RetentionSetting.SYNDICATE_ALIASES_SPECIFIED,
+			   tracingMode = TracingMode.Active
 )
 @LambdaUrlConfig(
 	authType = AuthType.NONE,
